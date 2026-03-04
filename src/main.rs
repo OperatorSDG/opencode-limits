@@ -1,5 +1,6 @@
 use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
 use chrono::{DateTime, Utc};
+use opencode_limits::types::{ParsedUsage, UsageResponse};
 use reqwest::Client;
 use std::{env, sync::Arc};
 use tokio::sync::RwLock;
@@ -48,26 +49,6 @@ struct Credits {
     balance: String,
     has_credits: bool,
     unlimited: bool,
-}
-
-#[derive(Clone, Debug, serde::Serialize)]
-struct ParsedUsage {
-    email: String,
-    plan_type: String,
-    session_used_percent: Option<u32>,
-    session_reset_at: Option<i64>,
-    session_reset_at_iso: Option<String>,
-    weekly_used_percent: Option<u32>,
-    weekly_reset_at: Option<i64>,
-    weekly_reset_at_iso: Option<String>,
-}
-
-#[derive(Debug, serde::Serialize)]
-struct UsageResponse {
-    data: ParsedUsage,
-    cache_age_seconds: i64,
-    last_sync_unix: i64,
-    last_sync_iso: String,
 }
 
 #[tokio::main]
