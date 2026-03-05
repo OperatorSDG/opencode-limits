@@ -37,13 +37,13 @@ struct AppState {
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct CodexAuthFile {
-    tokens: Option<CodexTokens>,
+struct OpencodeAuthFile {
+    openai: Option<OpencodeProvider>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct CodexTokens {
-    access_token: Option<String>,
+struct OpencodeProvider {
+    access: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -78,8 +78,10 @@ fn main() -> std::io::Result<()> {
     };
 
     if state.access_token.is_none() {
-        state.last_error =
-            Some("Set OPENAI_ACCESS_TOKEN or sign in via Codex (~/.codex/auth.json)".to_string());
+        state.last_error = Some(
+            "Set OPENAI_ACCESS_TOKEN or sign in via OpenCode (~/.local/share/opencode/auth.json)"
+                .to_string(),
+        );
     }
 
     let mut terminal = setup_terminal()?;
@@ -381,8 +383,10 @@ fn maybe_auto_refresh(state: &mut AppState) {
 
 fn refresh(state: &mut AppState) {
     let Some(access_token) = state.access_token.as_deref() else {
-        state.last_error =
-            Some("Set OPENAI_ACCESS_TOKEN or sign in via Codex (~/.codex/auth.json)".to_string());
+        state.last_error = Some(
+            "Set OPENAI_ACCESS_TOKEN or sign in via OpenCode (~/.local/share/opencode/auth.json)"
+                .to_string(),
+        );
         state.last_refresh = Some(Instant::now());
         return;
     };
@@ -411,6 +415,10 @@ fn refresh(state: &mut AppState) {
 }
 
 fn load_access_token() -> Option<String> {
+    if let Some(token) = load_access_token_from_opencode_auth() {
+        return Some(token);
+    }
+
     if let Ok(token) = env::var("OPENAI_ACCESS_TOKEN") {
         let token = token.trim();
         if !token.is_empty() {
@@ -418,16 +426,22 @@ fn load_access_token() -> Option<String> {
         }
     }
 
+    None
+}
+
+fn load_access_token_from_opencode_auth() -> Option<String> {
     let home = env::var("HOME").ok()?;
     let mut path = PathBuf::from(home);
-    path.push(".codex");
+    path.push(".local");
+    path.push("share");
+    path.push("opencode");
     path.push("auth.json");
 
     let raw = fs::read_to_string(path).ok()?;
-    let parsed: CodexAuthFile = serde_json::from_str(&raw).ok()?;
+    let parsed: OpencodeAuthFile = serde_json::from_str(&raw).ok()?;
     parsed
-        .tokens
-        .and_then(|t| t.access_token)
+        .openai
+        .and_then(|provider| provider.access)
         .map(|t| t.trim().to_string())
         .filter(|t| !t.is_empty())
 }
